@@ -6,7 +6,7 @@
 #include "source/common/http/header_map_impl.h"
 #include "source/common/http/headers.h"
 #include "source/common/http/utility.h"
-#include "source/common/quic/scone_state.h
+#include "source/common/quic/scone_state.h"
 
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"

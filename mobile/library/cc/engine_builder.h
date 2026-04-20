@@ -324,7 +324,7 @@ private:
   std::string upstream_tls_sni_;
   bool enable_http3_ = true;
   bool enable_early_data_{true};
-  bool scone_enabled_ = false
+  bool scone_enabled_ = false;
   std::string http3_connection_options_ = "";
   std::string http3_client_connection_options_ = "";
   // EVMB is to distinguish Envoy Mobile client connections.

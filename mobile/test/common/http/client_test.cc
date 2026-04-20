@@ -9,8 +9,8 @@
 #include "source/common/stats/isolated_store_impl.h"
 
 #include "test/common/http/common.h"
-#include "mobile/test/common/mocks/common/mocks.h"
-#include "mobile/test/common/mocks/event/mocks.h"
+#include "test/common/mocks/common/mocks.h"
+#include "test/common/mocks/event/mocks.h"
 #include "test/mocks/buffer/mocks.h"
 #include "test/mocks/common.h" 
 #include "test/mocks/event/mocks.h"
