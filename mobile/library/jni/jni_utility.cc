@@ -707,6 +707,8 @@ envoy_stream_intel javaStreamIntelToCppStreamIntel(JniHelper& jni_helper,
       /* connection_id= */ static_cast<int64_t>(java_connection_id),
       /* attempt_count= */ static_cast<uint64_t>(java_attempt_count),
       /* consumed_bytes_from_response= */ static_cast<uint64_t>(java_consumed_bytes_from_response),
+      /* scone_guidance_in_response= */ -1,
+      /* timestamp_of_scone_guidance_in_response= */ -1,
   };
 }
 
@@ -726,7 +728,7 @@ LocalRefUniquePtr<jobject> cppStreamIntelToJavaStreamIntel(JniHelper& jni_helper
 envoy_final_stream_intel
 javaFinalStreamIntelToCppFinalStreamIntel(JniHelper& jni_helper, jobject java_final_stream_intel) {
   auto java_final_stream_intel_class =
-      jni_helper.findClassFromCache("io/envoyproxy/envoymobile/engine/types/EnvoyFinalStreamIntel");
+      jni_helper.findClassFromCache("io/envoyproxy/envoymobile/enginef/types/EnvoyFinalStreamIntel");
   jlong java_stream_start_ms = jni_helper.callLongMethod(
       java_final_stream_intel,
       jni_helper.getMethodIdFromCache(java_final_stream_intel_class, "getStreamStartMs", "()J"));
