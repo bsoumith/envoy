@@ -32,12 +32,7 @@ TEST(EnvoyQuicUtilsTest, ConversionBetweenQuicAddressAndEnvoyAddress) {
     quic::QuicSocketAddress quic_addr(quic_ip, 12345);
     Network::Address::InstanceConstSharedPtr envoy_addr =
         quicAddressToEnvoyAddressInstance(quic_addr);
-    EXPECT_EQ(
-        quic_addr.ToS config.mutable_enable_scone()->set_value(true);
-        convertQuicConfig(config, quic_config); EXPECT_TRUE(quic_config.parse_scone_packets());
-
-        config.mutable_enable_scone()->set_value(false); convertQuicConfig(config, quic_config);
-        EXPECT_FALSE(quic_config.parse_scone_packets()); tring(), envoy_addr->asStringView());
+    EXPECT_EQ(quic_addr.ToString(), envoy_addr->asStringView());
     EXPECT_EQ(quic_addr, envoyIpAddressToQuicSocketAddress(envoy_addr->ip()));
   }
   EXPECT_FALSE(envoyIpAddressToQuicSocketAddress(nullptr).IsInitialized());
