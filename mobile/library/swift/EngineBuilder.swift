@@ -1,5 +1,5 @@
-@_implementationOnly import EnvoyEngine
 import Foundation
+@_implementationOnly import EnvoyEngine
 
 /// Builder used for creating and running a new Engine instance.
 @objcMembers
@@ -50,6 +50,95 @@ open class EngineBuilder: NSObject {
   /// Initialize a new builder.
   public override init() {}
 
+  /// Builds and runs a new `Engine` instance with the provided configuration.
+  ///
+  /// - note: Must be strongly retained in order for network requests to be performed correctly.
+  ///
+  /// - returns: The built `Engine`.
+  public func build() -> Engine {
+    let engine = self.engineType.init(
+      runningCallback: self.onEngineRunning,
+      logger: { level, message in
+        if let log = self.logger {
+          if let lvl = LogLevel(rawValue: level) {
+            log(lvl, message)
+          }
+        }
+      },
+      eventTracker: self.eventTracker
+    )
+    let config = self.makeConfig()
+
+    return EngineImpl(config: config, logLevel: self.logLevel, engine: engine)
+  }
+
+  // MARK: - Internal
+
+  /// Add a specific implementation of `EnvoyEngine` to use for starting Envoy.
+  /// A new instance of this engine will be created when `build()` is called.
+  /// Used for testing, as initializing with `EnvoyEngine.Type` results in a
+  /// segfault: https://github.com/envoyproxy/envoy-mobile/issues/334
+  ///
+  /// - parameter engineType: The specific implementation of `EnvoyEngine` to use for starting
+  ///                         Envoy.
+  ///
+  /// - returns: This builder.
+  @discardableResult
+  func addEngineType(_ engineType: EnvoyEngine.Type) -> Self {
+    self.engineType = engineType
+    return self
+  }
+
+  func makeConfig() -> EnvoyConfiguration {
+    return EnvoyConfiguration(
+      connectTimeoutSeconds: self.connectTimeoutSeconds,
+      dnsRefreshSeconds: self.dnsRefreshSeconds,
+      dnsFailureRefreshSecondsBase: self.dnsFailureRefreshSecondsBase,
+      dnsFailureRefreshSecondsMax: self.dnsFailureRefreshSecondsMax,
+      dnsQueryTimeoutSeconds: self.dnsQueryTimeoutSeconds,
+      dnsMinRefreshSeconds: self.dnsMinRefreshSeconds,
+      dnsPreresolveHostnames: self.dnsPreresolveHostnames,
+      enableDNSCache: self.enableDNSCache,
+      dnsCacheSaveIntervalSeconds: self.dnsCacheSaveIntervalSeconds,
+      dnsNumRetries: self.dnsNumRetries,
+      enableHttp3: self.enableHttp3,
+      enableScone: self.enableScone,
+      enableEarlyData: self.enableEarlyData,
+      quicHints: self.quicHints.mapValues { NSNumber(value: $0) },
+      quicCanonicalSuffixes: self.quicCanonicalSuffixes,
+      enableGzipDecompression: self.enableGzipDecompression,
+      enableBrotliDecompression: self.enableBrotliDecompression,
+      enableInterfaceBinding: self.enableInterfaceBinding,
+      enableDrainPostDnsRefresh: self.enableDrainPostDnsRefresh,
+      enforceTrustChainVerification: self.enforceTrustChainVerification,
+      enablePlatformCertificateValidation: self.enablePlatformCertificateValidation,
+      upstreamTlsSni: self.upstreamTlsSni,
+      respectSystemProxySettings: self.respectSystemProxySettings,
+      h2ConnectionKeepaliveIdleIntervalMilliseconds:
+        self.h2ConnectionKeepaliveIdleIntervalMilliseconds,
+      h2ConnectionKeepaliveTimeoutSeconds: self.h2ConnectionKeepaliveTimeoutSeconds,
+      maxConnectionsPerHost: self.maxConnectionsPerHost,
+      streamIdleTimeoutSeconds: self.streamIdleTimeoutSeconds,
+      perTryIdleTimeoutSeconds: self.perTryIdleTimeoutSeconds,
+      appVersion: self.appVersion,
+      appId: self.appId,
+      runtimeGuards: self.runtimeGuards.mapValues({ "\($0)" }),
+      nativeFilterChain: self.nativeFilterChain,
+      platformFilterChain: self.platformFilterChain,
+      stringAccessors: self.stringAccessors,
+      keyValueStores: self.keyValueStores
+    )
+  }
+
+  func bootstrapDebugDescription() -> String {
+    let objcDescription = self.makeConfig().bootstrapDebugDescription()
+    return objcDescription
+  }
+}
+
+// MARK: - Extensions
+
+extension EngineBuilder {
   /// Set a log level to use with Envoy.
   ///
   /// - parameter logLevel: The log level to use with Envoy.
@@ -301,7 +390,8 @@ open class EngineBuilder: NSObject {
   /// - returns: This builder.
   @discardableResult
   public func enablePlatformCertificateValidation(
-    _ enablePlatformCertificateValidation: Bool) -> Self {
+    _ enablePlatformCertificateValidation: Bool
+  ) -> Self {
     self.enablePlatformCertificateValidation = enablePlatformCertificateValidation
     return self
   }
@@ -327,7 +417,8 @@ open class EngineBuilder: NSObject {
   /// - returns: This builder.
   @discardableResult
   public func addH2ConnectionKeepaliveIdleIntervalMilliseconds(
-    _ h2ConnectionKeepaliveIdleIntervalMilliseconds: UInt32) -> Self {
+    _ h2ConnectionKeepaliveIdleIntervalMilliseconds: UInt32
+  ) -> Self {
     self.h2ConnectionKeepaliveIdleIntervalMilliseconds =
       h2ConnectionKeepaliveIdleIntervalMilliseconds
     return self
@@ -340,7 +431,8 @@ open class EngineBuilder: NSObject {
   /// - returns: This builder.
   @discardableResult
   public func addH2ConnectionKeepaliveTimeoutSeconds(
-    _ h2ConnectionKeepaliveTimeoutSeconds: UInt32) -> Self {
+    _ h2ConnectionKeepaliveTimeoutSeconds: UInt32
+  ) -> Self {
     self.h2ConnectionKeepaliveTimeoutSeconds = h2ConnectionKeepaliveTimeoutSeconds
     return self
   }
@@ -387,9 +479,7 @@ open class EngineBuilder: NSObject {
   ///
   /// - returns: This builder.
   @discardableResult
-  public func addPlatformFilter(name: String,
-                                factory: @escaping () -> Filter) -> Self
-  {
+  public func addPlatformFilter(name: String, factory: @escaping () -> Filter) -> Self {
     self.platformFilterChain.append(EnvoyHTTPFilterFactory(filterName: name, factory: factory))
     return self
   }
@@ -400,8 +490,7 @@ open class EngineBuilder: NSObject {
   ///
   /// - returns: This builder.
   @discardableResult
-  public func addPlatformFilter(_ factory: @escaping () -> Filter) -> Self
-  {
+  public func addPlatformFilter(_ factory: @escaping () -> Filter) -> Self {
     self.platformFilterChain.append(
       EnvoyHTTPFilterFactory(filterName: UUID().uuidString, factory: factory)
     )
@@ -449,6 +538,7 @@ open class EngineBuilder: NSObject {
   // Adds a runtime guard for the `envoy.reloadable_features.<guard>`.
   // For example if the runtime guard is `envoy.reloadable_features.use_foo`, the guard name is
   // `use_foo`.
+
   ///
   /// - parameter name:  the name of the runtime guard, e.g. test_feature_false.
   /// - parameter value: the value for the runtime guard.
@@ -513,88 +603,5 @@ open class EngineBuilder: NSObject {
   public func addAppVersion(_ appVersion: String) -> Self {
     self.appVersion = appVersion
     return self
-  }
-
-  /// Builds and runs a new `Engine` instance with the provided configuration.
-  ///
-  /// - note: Must be strongly retained in order for network requests to be performed correctly.
-  ///
-  /// - returns: The built `Engine`.
-  public func build() -> Engine {
-    let engine = self.engineType.init(runningCallback: self.onEngineRunning,
-                                      logger: { level, message in
-                                        if let log = self.logger {
-                                          if let lvl = LogLevel(rawValue: level) {
-                                            log(lvl, message)
-                                          }
-                                        }
-                                      },
-                                      eventTracker: self.eventTracker)
-    let config = self.makeConfig()
-
-    return EngineImpl(config: config, logLevel: self.logLevel, engine: engine)
-  }
-
-  // MARK: - Internal
-
-  /// Add a specific implementation of `EnvoyEngine` to use for starting Envoy.
-  /// A new instance of this engine will be created when `build()` is called.
-  /// Used for testing, as initializing with `EnvoyEngine.Type` results in a
-  /// segfault: https://github.com/envoyproxy/envoy-mobile/issues/334
-  ///
-  /// - parameter engineType: The specific implementation of `EnvoyEngine` to use for starting
-  ///                         Envoy.
-  ///
-  /// - returns: This builder.
-  @discardableResult
-  func addEngineType(_ engineType: EnvoyEngine.Type) -> Self {
-    self.engineType = engineType
-    return self
-  }
-
-  func makeConfig() -> EnvoyConfiguration {
-    return EnvoyConfiguration(
-      connectTimeoutSeconds: self.connectTimeoutSeconds,
-      dnsRefreshSeconds: self.dnsRefreshSeconds,
-      dnsFailureRefreshSecondsBase: self.dnsFailureRefreshSecondsBase,
-      dnsFailureRefreshSecondsMax: self.dnsFailureRefreshSecondsMax,
-      dnsQueryTimeoutSeconds: self.dnsQueryTimeoutSeconds,
-      dnsMinRefreshSeconds: self.dnsMinRefreshSeconds,
-      dnsPreresolveHostnames: self.dnsPreresolveHostnames,
-      enableDNSCache: self.enableDNSCache,
-      dnsCacheSaveIntervalSeconds: self.dnsCacheSaveIntervalSeconds,
-      dnsNumRetries: self.dnsNumRetries,
-      enableHttp3: self.enableHttp3,
-      enableScone: self.enableScone,
-      enableEarlyData: self.enableEarlyData,
-      quicHints: self.quicHints.mapValues { NSNumber(value: $0) },
-      quicCanonicalSuffixes: self.quicCanonicalSuffixes,
-      enableGzipDecompression: self.enableGzipDecompression,
-      enableBrotliDecompression: self.enableBrotliDecompression,
-      enableInterfaceBinding: self.enableInterfaceBinding,
-      enableDrainPostDnsRefresh: self.enableDrainPostDnsRefresh,
-      enforceTrustChainVerification: self.enforceTrustChainVerification,
-      enablePlatformCertificateValidation: self.enablePlatformCertificateValidation,
-      upstreamTlsSni: self.upstreamTlsSni,
-      respectSystemProxySettings: self.respectSystemProxySettings,
-      h2ConnectionKeepaliveIdleIntervalMilliseconds:
-        self.h2ConnectionKeepaliveIdleIntervalMilliseconds,
-      h2ConnectionKeepaliveTimeoutSeconds: self.h2ConnectionKeepaliveTimeoutSeconds,
-      maxConnectionsPerHost: self.maxConnectionsPerHost,
-      streamIdleTimeoutSeconds: self.streamIdleTimeoutSeconds,
-      perTryIdleTimeoutSeconds: self.perTryIdleTimeoutSeconds,
-      appVersion: self.appVersion,
-      appId: self.appId,
-      runtimeGuards: self.runtimeGuards.mapValues({ "\($0)" }),
-      nativeFilterChain: self.nativeFilterChain,
-      platformFilterChain: self.platformFilterChain,
-      stringAccessors: self.stringAccessors,
-      keyValueStores: self.keyValueStores
-    )
-  }
-
-  func bootstrapDebugDescription() -> String {
-    let objcDescription = self.makeConfig().bootstrapDebugDescription()
-    return objcDescription
   }
 }
