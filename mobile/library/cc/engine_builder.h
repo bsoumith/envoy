@@ -158,7 +158,7 @@ public:
   EngineBuilder& enableSocketTagging(bool socket_tagging_on);
   EngineBuilder& enableHttp3(bool http3_on);
   EngineBuilder& enableEarlyData(bool early_data_on);
-    EngineBuilder& enableScone(bool enable);
+  EngineBuilder& enableScone(bool enable);
   EngineBuilder& addQuicConnectionOption(std::string option);
   EngineBuilder& addQuicClientConnectionOption(std::string option);
   // Deprecated, use addQuicConnectionOption() instead.

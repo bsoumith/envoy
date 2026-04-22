@@ -1905,17 +1905,16 @@ public:
 
           std::vector<char> new_buffer(result.return_value_);
           if (quic::test::MaybeUpdateSconePacket(
-                  reinterpret_cast<const char*>(msg->msg_iov[0].iov_base),
-                  new_buffer.data(), result.return_value_,
-                  static_cast<uint8_t>(bandwidth))) {
+                  reinterpret_cast<const char*>(msg->msg_iov[0].iov_base), new_buffer.data(),
+                  result.return_value_, static_cast<uint8_t>(bandwidth))) {
             memcpy(msg->msg_iov[0].iov_base, new_buffer.data(), result.return_value_);
           }
           return result;
         }));
   }
 
-  MOCK_METHOD(Api::SysCallSizeResult, recvmsg,
-              (os_fd_t sockfd, msghdr* msg, int flags), (override));
+  MOCK_METHOD(Api::SysCallSizeResult, recvmsg, (os_fd_t sockfd, msghdr* msg, int flags),
+              (override));
 
   std::atomic<int16_t> scone_bandwidth_{-1};
 };
@@ -1937,8 +1936,8 @@ TEST_P(ClientIntegrationTest, SconeValuePropagation) {
   int64_t captured_scone_timestamp_ms = -1;
 
   EnvoyStreamCallbacks stream_callbacks = createDefaultStreamCallbacks();
-  stream_callbacks.on_headers_ = [&](const Http::ResponseHeaderMap& headers,
-                                     bool, envoy_stream_intel intel) {
+  stream_callbacks.on_headers_ = [&](const Http::ResponseHeaderMap& headers, bool,
+                                     envoy_stream_intel intel) {
     cc_.on_headers_calls_++;
     cc_.status_ = absl::StrCat(headers.getStatusValue());
     captured_scone_max_kbps = intel.scone_max_kbps;
@@ -1947,8 +1946,7 @@ TEST_P(ClientIntegrationTest, SconeValuePropagation) {
 
   stream_ = createNewStream(std::move(stream_callbacks));
   sys_calls.scone_bandwidth_.store(expected_bandwidth);
-  stream_->sendHeaders(std::make_unique<Http::TestRequestHeaderMapImpl>(
-                           default_request_headers_),
+  stream_->sendHeaders(std::make_unique<Http::TestRequestHeaderMapImpl>(default_request_headers_),
                        true);
 
   cc_.terminal_callback_->waitReady();
@@ -1959,8 +1957,8 @@ TEST_P(ClientIntegrationTest, SconeValuePropagation) {
   int64_t captured_scone_max_kbps2 = -1;
   int64_t captured_scone_timestamp_ms2 = -1;
   EnvoyStreamCallbacks stream_callbacks2 = createDefaultStreamCallbacks();
-  stream_callbacks2.on_headers_ = [&](const Http::ResponseHeaderMap& headers,
-                                      bool, envoy_stream_intel intel) {
+  stream_callbacks2.on_headers_ = [&](const Http::ResponseHeaderMap& headers, bool,
+                                      envoy_stream_intel intel) {
     cc_.on_headers_calls_++;
     cc_.status_ = absl::StrCat(headers.getStatusValue());
     captured_scone_max_kbps2 = intel.scone_max_kbps;
@@ -1971,8 +1969,7 @@ TEST_P(ClientIntegrationTest, SconeValuePropagation) {
   cc_.terminal_callback_ = &terminal_callback2;
 
   auto stream2 = createNewStream(std::move(stream_callbacks2));
-  stream2->sendHeaders(std::make_unique<Http::TestRequestHeaderMapImpl>(
-                           default_request_headers_),
+  stream2->sendHeaders(std::make_unique<Http::TestRequestHeaderMapImpl>(default_request_headers_),
                        true);
 
   terminal_callback2.waitReady();
@@ -2003,8 +2000,8 @@ TEST_P(ClientIntegrationTest, SconeValuePropagationDelayed) {
   absl::Notification data_received;
 
   EnvoyStreamCallbacks stream_callbacks = createDefaultStreamCallbacks();
-  stream_callbacks.on_headers_ = [&](const Http::ResponseHeaderMap& headers,
-                                     bool, envoy_stream_intel intel) {
+  stream_callbacks.on_headers_ = [&](const Http::ResponseHeaderMap& headers, bool,
+                                     envoy_stream_intel intel) {
     cc_.on_headers_calls_++;
     cc_.status_ = absl::StrCat(headers.getStatusValue());
     captured_scone_max_kbps_headers = intel.scone_max_kbps;
@@ -2013,7 +2010,8 @@ TEST_P(ClientIntegrationTest, SconeValuePropagationDelayed) {
       headers_received.Notify();
     }
   };
-  stream_callbacks.on_data_ = [&](const Buffer::Instance&, uint64_t, bool, envoy_stream_intel intel) {
+  stream_callbacks.on_data_ = [&](const Buffer::Instance&, uint64_t, bool,
+                                  envoy_stream_intel intel) {
     cc_.on_data_calls_++;
     captured_scone_max_kbps_data = intel.scone_max_kbps;
     captured_scone_timestamp_ms_data = intel.scone_timestamp_ms;
@@ -2023,8 +2021,7 @@ TEST_P(ClientIntegrationTest, SconeValuePropagationDelayed) {
   };
 
   stream_ = createNewStream(std::move(stream_callbacks));
-  stream_->sendHeaders(std::make_unique<Http::TestRequestHeaderMapImpl>(
-                           default_request_headers_),
+  stream_->sendHeaders(std::make_unique<Http::TestRequestHeaderMapImpl>(default_request_headers_),
                        true);
 
   ASSERT_TRUE(fake_upstreams_[0]->waitForHttpConnection(*BaseIntegrationTest::dispatcher_,
@@ -2077,8 +2074,8 @@ TEST_P(ClientIntegrationTest, SconeValuePropagationMultipleUpdates) {
   absl::Notification data_received;
 
   EnvoyStreamCallbacks stream_callbacks = createDefaultStreamCallbacks();
-  stream_callbacks.on_headers_ = [&](const Http::ResponseHeaderMap& headers,
-                                     bool, envoy_stream_intel intel) {
+  stream_callbacks.on_headers_ = [&](const Http::ResponseHeaderMap& headers, bool,
+                                     envoy_stream_intel intel) {
     cc_.on_headers_calls_++;
     cc_.status_ = absl::StrCat(headers.getStatusValue());
     captured_scone_max_kbps_headers = intel.scone_max_kbps;
@@ -2087,7 +2084,8 @@ TEST_P(ClientIntegrationTest, SconeValuePropagationMultipleUpdates) {
       headers_received.Notify();
     }
   };
-  stream_callbacks.on_data_ = [&](const Buffer::Instance&, uint64_t, bool, envoy_stream_intel intel) {
+  stream_callbacks.on_data_ = [&](const Buffer::Instance&, uint64_t, bool,
+                                  envoy_stream_intel intel) {
     cc_.on_data_calls_++;
     captured_scone_max_kbps_data = intel.scone_max_kbps;
     captured_scone_timestamp_ms_data = intel.scone_timestamp_ms;
@@ -2098,8 +2096,7 @@ TEST_P(ClientIntegrationTest, SconeValuePropagationMultipleUpdates) {
 
   stream_ = createNewStream(std::move(stream_callbacks));
   sys_calls.scone_bandwidth_.store(expected_bandwidth_1);
-  stream_->sendHeaders(std::make_unique<Http::TestRequestHeaderMapImpl>(
-                           default_request_headers_),
+  stream_->sendHeaders(std::make_unique<Http::TestRequestHeaderMapImpl>(default_request_headers_),
                        true);
 
   ASSERT_TRUE(fake_upstreams_[0]->waitForHttpConnection(*BaseIntegrationTest::dispatcher_,

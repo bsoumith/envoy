@@ -970,7 +970,7 @@ std::unique_ptr<envoy::config::bootstrap::v3::Bootstrap> EngineBuilder::generate
             max_time_on_non_default_network_seconds_);
       }
     }
-    
+
     if (scone_enabled_) {
       quic_protocol_options->mutable_enable_scone()->set_value(true);
     }

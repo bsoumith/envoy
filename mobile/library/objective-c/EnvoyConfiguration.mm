@@ -78,6 +78,7 @@
                       dnsCacheSaveIntervalSeconds:(UInt32)dnsCacheSaveIntervalSeconds
                                     dnsNumRetries:(NSInteger)dnsNumRetries
                                       enableHttp3:(BOOL)enableHttp3
+                                      enableScone:(BOOL)enableScone
                                   enableEarlyData:(BOOL)enableEarlyData
                                         quicHints:(NSDictionary<NSString *, NSNumber *> *)quicHints
                             quicCanonicalSuffixes:(NSArray<NSString *> *)quicCanonicalSuffixes
@@ -125,6 +126,7 @@
   self.dnsCacheSaveIntervalSeconds = dnsCacheSaveIntervalSeconds;
   self.dnsNumRetries = dnsNumRetries;
   self.enableHttp3 = enableHttp3;
+  self.enableScone = enableScone;
   self.enableEarlyData = enableEarlyData;
   self.quicHints = quicHints;
   self.quicCanonicalSuffixes = quicCanonicalSuffixes;
@@ -169,6 +171,7 @@
   }
 
   builder.enableHttp3(self.enableHttp3);
+  builder.enableScone(self.enableScone);
   builder.enableEarlyData(self.enableEarlyData);
   for (NSString *host in self.quicHints) {
     builder.addQuicHint([host toCXXString], [[self.quicHints objectForKey:host] intValue]);

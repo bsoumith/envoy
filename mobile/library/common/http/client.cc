@@ -411,9 +411,11 @@ void Client::DirectStream::saveLatestStreamIntel() {
   stream_intel_.attempt_count = info.attemptCount().value_or(0);
 
   const auto* scone_state =
-    info.filterState().getDataReadOnly<Envoy::Quic::SconeState>(Envoy::Quic::SconeStateKey);
-  if (scone_state && scone_state->scone_max_kbps.has_value() && scone_state->timestamp_ms.has_value()) {
-    // Only update if the new timestamp from scone_state is greater than the last recorded timestamp.
+      info.filterState().getDataReadOnly<Envoy::Quic::SconeState>(Envoy::Quic::SconeStateKey);
+  if (scone_state && scone_state->scone_max_kbps.has_value() &&
+      scone_state->timestamp_ms.has_value()) {
+    // Only update if the new timestamp from scone_state is greater than the last recorded
+    // timestamp.
     if (scone_state->timestamp_ms.value() > stream_intel_.scone_timestamp_ms) {
       stream_intel_.scone_max_kbps = scone_state->scone_max_kbps.value();
       stream_intel_.scone_timestamp_ms = scone_state->timestamp_ms.value();

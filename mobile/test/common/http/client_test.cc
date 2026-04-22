@@ -1,22 +1,22 @@
-#include <cstdint> 
-#include <memory>  
+#include <cstdint>
+#include <memory>
 
-#include "envoy/http/header_map.h" 
-#include "envoy/stream_info/filter_state.h" 
+#include "envoy/http/header_map.h"
+#include "envoy/stream_info/filter_state.h"
 #include "source/common/buffer/buffer_impl.h"
-#include "source/common/http/header_map_impl.h" 
-#include "source/common/quic/scone_state.h"  
+#include "source/common/http/header_map_impl.h"
+#include "source/common/quic/scone_state.h"
 #include "source/common/stats/isolated_store_impl.h"
 
 #include "test/common/http/common.h"
 #include "test/common/mocks/common/mocks.h"
 #include "test/common/mocks/event/mocks.h"
 #include "test/mocks/buffer/mocks.h"
-#include "test/mocks/common.h" 
+#include "test/mocks/common.h"
 #include "test/mocks/event/mocks.h"
 #include "test/mocks/http/api_listener.h"
 #include "test/mocks/http/mocks.h"
-#include "test/test_common/utility.h" 
+#include "test/test_common/utility.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -1006,7 +1006,6 @@ TEST_P(ExplicitFlowControlTest, CancelWithStreamComplete) {
   ASSERT_EQ(callbacks_called.on_complete_calls_, 0);
 }
 
-
 TEST_P(ClientTest, SaveLatestStreamIntelPopulatesScone) {
   StreamCallbacksCalled callbacks_called;
   createStream(createDefaultStreamCallbacks(callbacks_called));
@@ -1014,10 +1013,9 @@ TEST_P(ClientTest, SaveLatestStreamIntelPopulatesScone) {
   auto scone_state = std::make_shared<Quic::SconeState>();
   scone_state->scone_max_kbps = 100;
   scone_state->timestamp_ms = 12345;
-  stream_info_.filter_state_->setData(
-      Quic::SconeStateKey, scone_state,
-      StreamInfo::FilterState::StateType::Mutable,
-      StreamInfo::FilterState::LifeSpan::Connection);
+  stream_info_.filter_state_->setData(Quic::SconeStateKey, scone_state,
+                                      StreamInfo::FilterState::StateType::Mutable,
+                                      StreamInfo::FilterState::LifeSpan::Connection);
 
   auto stream_ptr = getDirectStream(stream_);
   ASSERT_NE(stream_ptr, nullptr);
@@ -1037,10 +1035,9 @@ TEST_P(ClientTest, SaveLatestStreamIntelPersistsScone) {
   auto scone_state = std::make_shared<Quic::SconeState>();
   scone_state->scone_max_kbps = 100;
   scone_state->timestamp_ms = 12345;
-  stream_info_.filter_state_->setData(
-      Quic::SconeStateKey, scone_state,
-      StreamInfo::FilterState::StateType::Mutable,
-      StreamInfo::FilterState::LifeSpan::Connection);
+  stream_info_.filter_state_->setData(Quic::SconeStateKey, scone_state,
+                                      StreamInfo::FilterState::StateType::Mutable,
+                                      StreamInfo::FilterState::LifeSpan::Connection);
 
   auto stream_ptr = getDirectStream(stream_);
   ASSERT_NE(stream_ptr, nullptr);
@@ -1073,10 +1070,9 @@ TEST_P(ClientTest, SaveLatestStreamIntelWithZeroSconeValue) {
   auto scone_state = std::make_shared<Quic::SconeState>();
   scone_state->scone_max_kbps = 0;
   scone_state->timestamp_ms = 12345;
-  stream_info_.filter_state_->setData(
-      Quic::SconeStateKey, scone_state,
-      StreamInfo::FilterState::StateType::Mutable,
-      StreamInfo::FilterState::LifeSpan::Connection);
+  stream_info_.filter_state_->setData(Quic::SconeStateKey, scone_state,
+                                      StreamInfo::FilterState::StateType::Mutable,
+                                      StreamInfo::FilterState::LifeSpan::Connection);
 
   auto stream_ptr = getDirectStream(stream_);
   ASSERT_NE(stream_ptr, nullptr);

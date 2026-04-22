@@ -18,7 +18,7 @@ class MockStream(underlyingStream: MockEnvoyHTTPStream) :
   Stream(underlyingStream, useByteBufferPosition = false) {
   private val mockStream: MockEnvoyHTTPStream = underlyingStream
 
-  private val mockStreamIntel = EnvoyStreamIntel(0, 0, 0, 0)
+  private val mockStreamIntel = EnvoyStreamIntel(0, 0, 0, 0, 0, 0)
 
   private val mockFinalStreamIntel =
     EnvoyFinalStreamIntel(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, false, 0, 0, 0, 0)

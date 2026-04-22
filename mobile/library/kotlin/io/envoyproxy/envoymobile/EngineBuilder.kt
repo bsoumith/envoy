@@ -47,6 +47,7 @@ open class EngineBuilder() {
   private var dnsNumRetries: Int? = null
   private var enableDrainPostDnsRefresh = false
   internal var enableHttp3 = true
+  internal var enableScone = false
   private var enableEarlyData = true
   private var http3ConnectionOptions = ""
   private var http3ClientConnectionOptions = ""
@@ -227,6 +228,17 @@ open class EngineBuilder() {
    */
   fun enableHttp3(enableHttp3: Boolean): EngineBuilder {
     this.enableHttp3 = enableHttp3
+    return this
+  }
+
+  /**
+   * Specify whether to enable SCONE support.
+   *
+   * @param enableScone whether or not to enable SCONE.
+   * @return This builder.
+   */
+  fun enableScone(enableScone: Boolean): EngineBuilder {
+    this.enableScone = enableScone
     return this
   }
 
@@ -562,6 +574,7 @@ open class EngineBuilder() {
         dnsNumRetries ?: -1,
         enableDrainPostDnsRefresh,
         enableHttp3,
+        enableScone,
         enableEarlyData,
         http3ConnectionOptions,
         http3ClientConnectionOptions,

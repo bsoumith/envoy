@@ -56,7 +56,9 @@ PYBIND11_MODULE(envoy_engine, m) {
       .def_readwrite("connection_id", &envoy_stream_intel::connection_id)
       .def_readwrite("attempt_count", &envoy_stream_intel::attempt_count)
       .def_readwrite("consumed_bytes_from_response",
-                     &envoy_stream_intel::consumed_bytes_from_response);
+                     &envoy_stream_intel::consumed_bytes_from_response)
+      .def_readwrite("scone_max_kbps", &envoy_stream_intel::scone_max_kbps)
+      .def_readwrite("scone_timestamp_ms", &envoy_stream_intel::scone_timestamp_ms);
 
   py::class_<envoy_final_stream_intel>(m, "FinalStreamIntel")
       .def(py::init<>())
@@ -302,6 +304,12 @@ PYBIND11_MODULE(envoy_engine, m) {
             return self.enableHttp3(on);
           },
           py::arg("http3_on"), py::return_value_policy::reference)
+      .def(
+          "enable_scone",
+          [](Envoy::Platform::EngineBuilder& self, bool on) -> Envoy::Platform::EngineBuilder& {
+            return self.enableScone(on);
+          },
+          py::arg("scone_on"), py::return_value_policy::reference)
       .def(
           "add_quic_hint",
           [](Envoy::Platform::EngineBuilder& self, std::string host,

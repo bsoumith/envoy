@@ -19,6 +19,7 @@ open class EngineBuilder: NSObject {
   private var enableGzipDecompression: Bool = true
   private var enableBrotliDecompression: Bool = false
   private var enableHttp3: Bool = true
+  private var enableScone: Bool = false
   private var enableEarlyData: Bool = true
   private var quicHints: [String: Int] = [:]
   private var quicCanonicalSuffixes: [String] = []
@@ -189,6 +190,17 @@ open class EngineBuilder: NSObject {
   @discardableResult
   public func enableHttp3(_ enableHttp3: Bool) -> Self {
     self.enableHttp3 = enableHttp3
+    return self
+  }
+
+  /// Specify whether to enable SCONE support.
+  ///
+  /// - parameter enableScone: whether or not to enable SCONE.
+  ///
+  /// - returns: This builder.
+  @discardableResult
+  public func enableScone(_ enableScone: Bool) -> Self {
+    self.enableScone = enableScone
     return self
   }
 
@@ -553,6 +565,7 @@ open class EngineBuilder: NSObject {
       dnsCacheSaveIntervalSeconds: self.dnsCacheSaveIntervalSeconds,
       dnsNumRetries: self.dnsNumRetries,
       enableHttp3: self.enableHttp3,
+      enableScone: self.enableScone,
       enableEarlyData: self.enableEarlyData,
       quicHints: self.quicHints.mapValues { NSNumber(value: $0) },
       quicCanonicalSuffixes: self.quicCanonicalSuffixes,
