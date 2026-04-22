@@ -78,7 +78,7 @@ class GRPCReceiveErrorTest {
     val requestHeader =
       GRPCRequestHeadersBuilder(
           scheme = "https",
-          authority = "doesnotexist.example.com",
+          authority = "example.com",
           path = "/pb.api.v1.Foo/GetBar"
         )
         .build()
