@@ -38,16 +38,6 @@ class EngineBuilderTest {
   }
 
   @Test
-  fun `enabling SCONE overrides default`() {
-    engineBuilder = EngineBuilder()
-    engineBuilder.addEngineType { envoyEngine }
-    engineBuilder.enableScone(true)
-
-    val engine = engineBuilder.build() as EngineImpl
-    assertThat(engine.envoyConfiguration.enableScone).isTrue()
-  }
-
-  @Test
   fun `specifying connection timeout overrides default`() {
     engineBuilder = EngineBuilder()
     engineBuilder.addEngineType { envoyEngine }

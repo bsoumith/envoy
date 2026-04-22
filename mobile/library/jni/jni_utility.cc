@@ -98,13 +98,11 @@ void JniUtility::initCache() {
   Envoy::JNI::JniHelper::addToCache("io/envoyproxy/envoymobile/engine/types/EnvoyStreamIntel",
                                     /* methods= */
                                     {
-                                        {"<init>", "(JJJJJJ)V"},
+                                        {"<init>", "(JJJJ)V"},
                                         {"getStreamId", "()J"},
                                         {"getConnectionId", "()J"},
                                         {"getAttemptCount", "()J"},
                                         {"getConsumedBytesFromResponse", "()J"},
-                                        {"getSconeMaxKbps", "()J"},
-                                        {"getSconeTimestampMs", "()J"},
                                     },
                                     /* static_methods = */ {}, /* fields= */ {},
                                     /* static_fields= */ {});
@@ -178,7 +176,7 @@ LocalRefUniquePtr<jobject> envoyDataToJavaByteBuffer(JniHelper& jni_helper, envo
 
 LocalRefUniquePtr<jlongArray> envoyStreamIntelToJavaLongArray(JniHelper& jni_helper,
                                                               envoy_stream_intel stream_intel) {
-  LocalRefUniquePtr<jlongArray> j_array = jni_helper.newLongArray(6);
+  LocalRefUniquePtr<jlongArray> j_array = jni_helper.newLongArray(4);
   PrimitiveArrayCriticalUniquePtr<jlong> critical_array =
       jni_helper.getPrimitiveArrayCritical<jlong*>(j_array.get(), nullptr);
   RELEASE_ASSERT(critical_array != nullptr, "unable to allocate memory in jni_utility");
@@ -186,8 +184,6 @@ LocalRefUniquePtr<jlongArray> envoyStreamIntelToJavaLongArray(JniHelper& jni_hel
   critical_array.get()[1] = static_cast<jlong>(stream_intel.connection_id);
   critical_array.get()[2] = static_cast<jlong>(stream_intel.attempt_count);
   critical_array.get()[3] = static_cast<jlong>(stream_intel.consumed_bytes_from_response);
-  critical_array.get()[4] = static_cast<jlong>(stream_intel.scone_max_kbps);
-  critical_array.get()[5] = static_cast<jlong>(stream_intel.scone_timestamp_ms);
   return j_array;
 }
 
@@ -705,20 +701,15 @@ envoy_stream_intel javaStreamIntelToCppStreamIntel(JniHelper& jni_helper,
   jlong java_consumed_bytes_from_response = jni_helper.callLongMethod(
       java_stream_intel, jni_helper.getMethodIdFromCache(java_stream_intel_class,
                                                          "getConsumedBytesFromResponse", "()J"));
-  jlong java_scone_max_kbps = jni_helper.callLongMethod(
-      java_stream_intel,
-      jni_helper.getMethodIdFromCache(java_stream_intel_class, "getSconeMaxKbps", "()J"));
-  jlong java_scone_timestamp_ms = jni_helper.callLongMethod(
-      java_stream_intel,
-      jni_helper.getMethodIdFromCache(java_stream_intel_class, "getSconeTimestampMs", "()J"));
 
   return {
       /* stream_id= */ static_cast<int64_t>(java_stream_id),
       /* connection_id= */ static_cast<int64_t>(java_connection_id),
       /* attempt_count= */ static_cast<uint64_t>(java_attempt_count),
       /* consumed_bytes_from_response= */ static_cast<uint64_t>(java_consumed_bytes_from_response),
-      /* scone_max_kbps= */ static_cast<int64_t>(java_scone_max_kbps),
-      /* scone_timestamp_ms= */ static_cast<int64_t>(java_scone_timestamp_ms),
+      // TODO(bsoumith): Implement SCONE propagation in mobile language bindings
+      /* scone_max_kbps= */ -1,
+      /* scone_timestamp_ms= */ -1,
   };
 }
 
@@ -727,14 +718,13 @@ LocalRefUniquePtr<jobject> cppStreamIntelToJavaStreamIntel(JniHelper& jni_helper
   auto java_stream_intel_class =
       jni_helper.findClassFromCache("io/envoyproxy/envoymobile/engine/types/EnvoyStreamIntel");
   auto java_stream_intel_init_method_id =
-      jni_helper.getMethodIdFromCache(java_stream_intel_class, "<init>", "(JJJJJJ)V");
+      jni_helper.getMethodIdFromCache(java_stream_intel_class, "<init>", "(JJJJ)V");
+  // TODO(bsoumith): Implement SCONE propagation in mobile language bindings
   return jni_helper.newObject(java_stream_intel_class, java_stream_intel_init_method_id,
                               static_cast<jlong>(stream_intel.stream_id),
                               static_cast<jlong>(stream_intel.connection_id),
                               static_cast<jlong>(stream_intel.attempt_count),
-                              static_cast<jlong>(stream_intel.consumed_bytes_from_response),
-                              static_cast<jlong>(stream_intel.scone_max_kbps),
-                              static_cast<jlong>(stream_intel.scone_timestamp_ms));
+                              static_cast<jlong>(stream_intel.consumed_bytes_from_response));
 }
 
 envoy_final_stream_intel

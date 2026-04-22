@@ -52,20 +52,6 @@ final class EngineBuilderTests: XCTestCase {
     self.waitForExpectations(timeout: 0.01)
   }
 
-  func testEnablingSconeAddsToConfigurationWhenRunningEnvoy() {
-    let expectation = self.expectation(description: "Run called with enabled SCONE")
-    MockEnvoyEngine.onRunWithConfig = { config, _ in
-      XCTAssertTrue(config.enableScone)
-      expectation.fulfill()
-    }
-
-    _ = EngineBuilder()
-      .addEngineType(MockEnvoyEngine.self)
-      .enableScone(true)
-      .build()
-    self.waitForExpectations(timeout: 0.01)
-  }
-
   func testEnforcingTrustChainVerificationAddsToConfigurationWhenRunningEnvoy() {
     let expectation = self.expectation(description: "Run called with enforced cert verification")
     MockEnvoyEngine.onRunWithConfig = { config, _ in

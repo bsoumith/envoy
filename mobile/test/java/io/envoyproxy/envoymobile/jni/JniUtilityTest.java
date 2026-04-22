@@ -163,9 +163,7 @@ public class JniUtilityTest {
         /* streamId= */ 1,
         /* connectionId= */ 2,
         /* attemptCount= */ 3,
-        /* consumedBytesFromResponse= */ 4,
-        /* sconeMaxKbps= */ 5,
-        /* sconeTimestampMs= */ 6);
+        /* consumedBytesFromResponse= */ 4);
     assertThat(javaCppStreamIntelConversion(streamIntel)).isEqualTo(streamIntel);
   }
 

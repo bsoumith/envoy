@@ -11,10 +11,6 @@ import io.envoyproxy.envoymobile.engine.types.EnvoyStreamIntel
  * @param streamId The stream identifier.
  * @param connectionId The connection identifier.
  * @param attemptCount The number of attempts used to perform a given request.
- * @param consumedBytesFromResponse The number of bytes consumed by the non terminal callbacks, from
- *   the response.
- * @param sconeMaxKbps The latest SCONE maximum bitrate received from the network, in kbps.
- * @param sconeTimestampMs Time since epoch when SCONE value was received, -1 if no new value
  * @param streamStartMs The time the stream started (a.k.a. request started), in ms since the epoch.
  * @param dnsStartMs The time the DNS resolution for this request started, in ms since the epoch.
  * @param dnsEndMs The time the DNS resolution for this request completed, in ms since the epoch.
@@ -44,9 +40,6 @@ class FinalStreamIntel(
   streamId: Long,
   connectionId: Long,
   attemptCount: Long,
-  consumedBytesFromResponse: Long,
-  sconeMaxKbps: Long,
-  sconeTimestampMs: Long,
   val streamStartMs: Long,
   val dnsStartMs: Long,
   val dnsEndMs: Long,
@@ -62,15 +55,7 @@ class FinalStreamIntel(
   val sentByteCount: Long,
   val receivedByteCount: Long,
   val responseFlags: Long
-) :
-  StreamIntel(
-    streamId,
-    connectionId,
-    attemptCount,
-    consumedBytesFromResponse,
-    sconeMaxKbps,
-    sconeTimestampMs
-  ) {
+) : StreamIntel(streamId, connectionId, attemptCount) {
   constructor(
     superBase: EnvoyStreamIntel,
     base: EnvoyFinalStreamIntel
@@ -78,9 +63,6 @@ class FinalStreamIntel(
     superBase.streamId,
     superBase.connectionId,
     superBase.attemptCount,
-    superBase.consumedBytesFromResponse,
-    superBase.sconeMaxKbps,
-    superBase.sconeTimestampMs,
     base.streamStartMs,
     base.dnsStartMs,
     base.dnsEndMs,

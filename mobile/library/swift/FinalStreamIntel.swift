@@ -44,9 +44,6 @@ public final class FinalStreamIntel: StreamIntel {
     streamId: Int64,
     connectionId: Int64,
     attemptCount: UInt64,
-    consumedBytesFromResponse: UInt64,
-    sconeMaxKbps: Int64,
-    sconeTimestampMs: Int64,
     streamStartMs: Int64,
     dnsStartMs: Int64,
     dnsEndMs: Int64,
@@ -80,9 +77,7 @@ public final class FinalStreamIntel: StreamIntel {
     self.receivedByteCount = receivedByteCount
     self.responseFlags = responseFlags
     self.upstreamProtocol = upstreamProtocol
-    super.init(streamId: streamId, connectionId: connectionId, attemptCount: attemptCount,
-               consumedBytesFromResponse: consumedBytesFromResponse, sconeMaxKbps: sconeMaxKbps,
-               sconeTimestampMs: sconeTimestampMs)
+    super.init(streamId: streamId, connectionId: connectionId, attemptCount: attemptCount)
   }
 }
 
@@ -92,9 +87,6 @@ extension FinalStreamIntel {
       streamId: cIntel.stream_id,
       connectionId: cIntel.connection_id,
       attemptCount: cIntel.attempt_count,
-      consumedBytesFromResponse: cIntel.consumed_bytes_from_response,
-      sconeMaxKbps: cIntel.scone_max_kbps,
-      sconeTimestampMs: cIntel.scone_timestamp_ms,
       streamStartMs: cFinalIntel.stream_start_ms,
       dnsStartMs: cFinalIntel.dns_start_ms,
       dnsEndMs: cFinalIntel.dns_end_ms,
