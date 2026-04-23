@@ -69,6 +69,7 @@ public class EnvoyConfiguration {
   public final boolean migrateIdleQuicConnection;
   public final long maxIdleTimeBeforeQuicMigrationSeconds;
   public final long maxTimeOnNonDefaultNetworkSeconds;
+  public final boolean enableScone;
 
   /**
    * Create a new instance of the configuration.
@@ -143,6 +144,7 @@ public class EnvoyConfiguration {
    * @param maxIdleTimeBeforeQuicMigrationSeconds           the maximum idle time before QUIC
    *     migration.
    * @param maxTimeOnNonDefaultNetworkSeconds           the maximum time on non-default network.
+   * @param enableScone                                   whether to enable SCONE support.
    */
   public EnvoyConfiguration(
       int connectTimeoutSeconds, boolean disableDnsRefreshOnFailure,
@@ -165,7 +167,8 @@ public class EnvoyConfiguration {
       boolean enablePlatformCertificatesValidation, String upstreamTlsSni,
       int h3ConnectionKeepaliveInitialIntervalMilliseconds, boolean useQuicPlatformPacketWriter,
       boolean enableQuicConnectionMigration, boolean migrateIdleQuicConnection,
-      long maxIdleTimeBeforeQuicMigrationSeconds, long maxTimeOnNonDefaultNetworkSeconds) {
+      long maxIdleTimeBeforeQuicMigrationSeconds, long maxTimeOnNonDefaultNetworkSeconds,
+      boolean enableScone) {
     JniLibrary.load();
     this.connectTimeoutSeconds = connectTimeoutSeconds;
     this.disableDnsRefreshOnFailure = disableDnsRefreshOnFailure;
@@ -230,6 +233,7 @@ public class EnvoyConfiguration {
     this.migrateIdleQuicConnection = migrateIdleQuicConnection;
     this.maxIdleTimeBeforeQuicMigrationSeconds = maxIdleTimeBeforeQuicMigrationSeconds;
     this.maxTimeOnNonDefaultNetworkSeconds = maxTimeOnNonDefaultNetworkSeconds;
+    this.enableScone = enableScone;
   }
 
   public long createBootstrap() {
@@ -257,6 +261,6 @@ public class EnvoyConfiguration {
         appId, enforceTrustChainVerification, filterChain, enablePlatformCertificatesValidation,
         upstreamTlsSni, runtimeGuards, h3ConnectionKeepaliveInitialIntervalMilliseconds,
         useQuicPlatformPacketWriter, enableQuicConnectionMigration, migrateIdleQuicConnection,
-        maxIdleTimeBeforeQuicMigrationSeconds, maxTimeOnNonDefaultNetworkSeconds);
+        maxIdleTimeBeforeQuicMigrationSeconds, maxTimeOnNonDefaultNetworkSeconds, enableScone);
   }
 }

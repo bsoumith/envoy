@@ -18,6 +18,16 @@ class EngineBuilderTest {
   }
 
   @Test
+  fun `enabling SCONE overrides default`() {
+    engineBuilder = EngineBuilder()
+    engineBuilder.addEngineType { envoyEngine }
+    engineBuilder.enableScone(true)
+
+    val engine = engineBuilder.build() as EngineImpl
+    assertThat(engine.envoyConfiguration.enableScone).isTrue()
+  }
+
+  @Test
   fun `adding log level builder uses log level for running Envoy`() {
     engineBuilder = EngineBuilder()
     engineBuilder.addEngineType { envoyEngine }

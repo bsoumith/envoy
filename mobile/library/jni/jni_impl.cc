@@ -1155,7 +1155,8 @@ void configureBuilder(
     jobjectArray runtime_guards, jlong h3_connection_keepalive_initial_interval_milliseconds,
     jboolean use_quic_platform_packet_writer, jboolean enable_connection_migration,
     jboolean migrate_idle_connection, jlong max_idle_time_before_migration_seconds,
-    jlong max_time_on_non_default_network_seconds, Envoy::Platform::EngineBuilder& builder) {
+    jlong max_time_on_non_default_network_seconds, jboolean enable_scone,
+    Envoy::Platform::EngineBuilder& builder) {
   builder.addConnectTimeoutSeconds((connect_timeout_seconds));
   builder.setDisableDnsRefreshOnFailure(disable_dns_refresh_on_failure);
   builder.setDisableDnsRefreshOnNetworkChange(disable_dns_refresh_on_network_change);
@@ -1183,7 +1184,7 @@ void configureBuilder(
   builder.enableBrotliDecompression(enable_brotli_decompression == JNI_TRUE);
   builder.enableSocketTagging(enable_socket_tagging == JNI_TRUE);
   builder.enableHttp3(enable_http3 == JNI_TRUE);
-  // TODO(bsoumith): Expose enable_scone to mobile language bindings
+  builder.enableScone(enable_scone == JNI_TRUE);
   builder.enableEarlyData(enable_early_data == JNI_TRUE);
   builder.setHttp3ConnectionOptions(
       Envoy::JNI::javaStringToCppString(jni_helper, http3_connection_options));
@@ -1263,7 +1264,7 @@ extern "C" JNIEXPORT jlong JNICALL Java_io_envoyproxy_envoymobile_engine_JniLibr
     jobjectArray runtime_guards, jlong h3_connection_keepalive_initial_interval_milliseconds,
     jboolean use_quic_platform_packet_writer, jboolean enable_connection_migration,
     jboolean migrate_idle_connection, jlong max_idle_time_before_migration_seconds,
-    jlong max_time_on_non_default_network_seconds) {
+    jlong max_time_on_non_default_network_seconds, jboolean enable_scone) {
   Envoy::JNI::JniHelper jni_helper(env);
   Envoy::Platform::EngineBuilder builder;
 
@@ -1282,7 +1283,7 @@ extern "C" JNIEXPORT jlong JNICALL Java_io_envoyproxy_envoymobile_engine_JniLibr
       enable_platform_certificates_validation, upstream_tls_sni, runtime_guards,
       h3_connection_keepalive_initial_interval_milliseconds, use_quic_platform_packet_writer,
       enable_connection_migration, migrate_idle_connection, max_idle_time_before_migration_seconds,
-      max_time_on_non_default_network_seconds, builder);
+      max_time_on_non_default_network_seconds, enable_scone, builder);
   return reinterpret_cast<intptr_t>(builder.generateBootstrap().release());
 }
 

@@ -350,7 +350,8 @@ public class JniLibrary {
       boolean enablePlatformCertificatesValidation, String upstreamTlsSni, byte[][] runtimeGuards,
       long h3ConnectionKeepaliveInitialIntervalMilliseconds, boolean useQuicPlatformPacketWriter,
       boolean enableQuicConnectionMigration, boolean migrateIdleQuicConnection,
-      long maxIdleTimeBeforeQuicMigrationSeconds, long maxTimeOnNonDefaultNetworkSeconds);
+      long maxIdleTimeBeforeQuicMigrationSeconds, long maxTimeOnNonDefaultNetworkSeconds,
+      boolean enableScone);
 
   /**
    * Returns true if the runtime feature is enabled.

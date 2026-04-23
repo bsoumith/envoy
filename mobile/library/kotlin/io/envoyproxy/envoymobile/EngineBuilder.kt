@@ -21,6 +21,7 @@ open class EngineBuilder() {
   protected var migrateIdleQuicConnection = false
   protected var maxIdleTimeBeforeQuicMigrationSeconds: Long = 0
   protected var maxTimeOnNonDefaultNetworkSeconds: Long = 0
+  protected var enableScone = false
 
   private var runtimeGuards = mutableMapOf<String, Boolean>()
   private var engineType: () -> EnvoyEngine = {
@@ -540,6 +541,17 @@ open class EngineBuilder() {
   }
 
   /**
+   * Enables SCONE (Standardized Communication with Network Elements) support.
+   *
+   * @param enable whether to enable SCONE.
+   * @return this builder.
+   */
+  fun enableScone(enable: Boolean): EngineBuilder {
+    this.enableScone = enable
+    return this
+  }
+
+  /**
    * Builds and runs a new Engine instance with the provided configuration.
    *
    * @return A new instance of Envoy.
@@ -592,7 +604,8 @@ open class EngineBuilder() {
         enableQuicConnectionMigration,
         migrateIdleQuicConnection,
         maxIdleTimeBeforeQuicMigrationSeconds,
-        maxTimeOnNonDefaultNetworkSeconds
+        maxTimeOnNonDefaultNetworkSeconds,
+        enableScone
       )
 
     return EngineImpl(engineType(), engineConfiguration, logLevel)
