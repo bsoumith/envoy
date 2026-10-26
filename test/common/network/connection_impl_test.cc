@@ -1998,6 +1998,34 @@ TEST_P(ConnectionImplTest, BindFailureTest) {
   EXPECT_THAT(client_connection_->transportFailureReason(), StartsWith("failed to bind to"));
 }
 
+// Verify that calling connect() on a client connection whose socket could not be created (for
+// example because socket(2) failed) does not crash, and that the connection is closed by the
+// LocalClose event that the constructor schedules.
+TEST_P(ConnectionImplTest, ConnectAfterSocketCreationFailure) {
+  Assert::resetEnvoyBugCountersForTest();
+  dispatcher_ = api_->allocateDispatcher("test_thread");
+  EXPECT_ENVOY_BUG(
+      {
+        client_connection_ = std::make_unique<Network::ClientConnectionImpl>(
+            *dispatcher_,
+            std::make_unique<ConnectionSocketImpl>(
+                IoHandlePtr{}, nullptr, Network::Test::getCanonicalLoopbackAddress(GetParam())),
+            nullptr, Network::Test::createRawBufferSocket(), nullptr, nullptr);
+        client_connection_->addConnectionCallbacks(client_callbacks_);
+        EXPECT_EQ(Connection::State::Closed, client_connection_->state());
+
+        // Owners such as the TCP connection pool call connect() right after construction, before
+        // the scheduled LocalClose event has run.
+        client_connection_->connect();
+        EXPECT_FALSE(client_connection_->connecting());
+
+        EXPECT_CALL(client_callbacks_, onEvent(ConnectionEvent::LocalClose));
+        dispatcher_->run(Event::Dispatcher::RunType::NonBlock);
+        EXPECT_EQ("socket creation failure", client_connection_->transportFailureReason());
+      },
+      "Client socket failure");
+}
+
 // ReadOnCloseTest verifies that the read filter's onData function is invoked with available data
 // when the connection is closed.
 TEST_P(ConnectionImplTest, ReadOnCloseTest) {

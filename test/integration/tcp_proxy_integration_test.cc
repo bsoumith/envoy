@@ -10,6 +10,7 @@
 #include "envoy/extensions/filters/network/tcp_proxy/v3/tcp_proxy.pb.h"
 #include "envoy/extensions/upstreams/tcp/v3/tcp_protocol_options.pb.h"
 
+#include "source/common/api/os_sys_calls_impl.h"
 #include "source/common/config/api_version.h"
 #include "source/common/network/socket_option_impl.h"
 #include "source/common/network/utility.h"
@@ -27,6 +28,7 @@
 #include "test/integration/utility.h"
 #include "test/test_common/registry.h"
 #include "test/test_common/test_random_generator.h"
+#include "test/test_common/threadsafe_singleton_injector.h"
 
 #include "absl/functional/any_invocable.h"
 #include "absl/strings/ascii.h"
@@ -2356,6 +2358,72 @@ TEST_P(TcpProxyIntegrationTest, UpstreamConnectModeOnDownstreamData) {
 
   tcp_client->close();
 }
+
+#ifndef WIN32
+// Fails socket(2) while armed, and otherwise uses the real system calls.
+class FailingSocketOsSysCalls : public Api::OsSysCallsImpl {
+public:
+  void setFailSocket(bool fail) {
+    absl::MutexLock lock(mutex_);
+    fail_socket_ = fail;
+  }
+
+  Api::SysCallSocketResult socket(int domain, int type, int protocol) override {
+    {
+      absl::MutexLock lock(mutex_);
+      if (fail_socket_) {
+        return {-1, EMFILE};
+      }
+    }
+    return Api::OsSysCallsImpl::socket(domain, type, protocol);
+  }
+
+private:
+  absl::Mutex mutex_;
+  bool fail_socket_ ABSL_GUARDED_BY(mutex_) = false;
+};
+
+// Test that failing to create the upstream socket closes the downstream connection instead of
+// crashing. The TCP connection pool calls connect() on the new upstream connection before the
+// close scheduled for the failed socket runs.
+TEST_P(TcpProxyIntegrationTest, UpstreamSocketCreationFailure) {
+  FailingSocketOsSysCalls os_sys_calls;
+  TestThreadsafeSingletonInjector<Api::OsSysCallsImpl> os_calls{&os_sys_calls};
+  // Connect upstream only when downstream data arrives, so that socket creation can be made to fail
+  // after the downstream connection has been accepted.
+  config_helper_.addConfigModifier([](envoy::config::bootstrap::v3::Bootstrap& bootstrap) {
+    auto* filter = bootstrap.mutable_static_resources()
+                       ->mutable_listeners(0)
+                       ->mutable_filter_chains(0)
+                       ->mutable_filters(0);
+    envoy::extensions::filters::network::tcp_proxy::v3::TcpProxy tcp_proxy;
+    std::ignore = filter->typed_config().UnpackTo(&tcp_proxy);
+    tcp_proxy.set_upstream_connect_mode(
+        envoy::extensions::filters::network::tcp_proxy::v3::ON_DOWNSTREAM_DATA);
+    tcp_proxy.mutable_max_early_data_bytes()->set_value(8192);
+    std::ignore = filter->mutable_typed_config()->PackFrom(tcp_proxy);
+  });
+  initialize();
+  Assert::resetEnvoyBugCountersForTest();
+
+  IntegrationTcpClientPtr tcp_client = makeTcpConnection(lookupPort("tcp_proxy"));
+  test_server_->waitForCounter("tcp.tcpproxy_stats.downstream_cx_total", Ge(1));
+
+  EXPECT_ENVOY_BUG(
+      {
+        os_sys_calls.setFailSocket(true);
+        EXPECT_TRUE(tcp_client->write("hello", false, false));
+        test_server_->waitForCounter("cluster.cluster_0.upstream_cx_connect_fail", Ge(1));
+        // Envoy closes the downstream connection, which the client sees as a half close.
+        tcp_client->waitForHalfClose(/*ignore_spurious_events=*/true);
+      },
+      "socket(2) failed");
+
+  os_sys_calls.setFailSocket(false);
+  // Shut down the server before os_calls goes out of scope to avoid syscalls during its removal.
+  test_server_.reset();
+}
+#endif
 
 // Test early data buffering with half-close.
 TEST_P(TcpProxyIntegrationTest, UpstreamConnectModeEarlyDataWithHalfClose) {
