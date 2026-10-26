@@ -306,6 +306,112 @@ TEST(IoSocketHandleImpl, DroppedUdpDatagramsMmsg) {
 
 #endif
 
+#ifndef WIN32
+// Fills in a received packet from 127.0.0.1:12345 with the given msg_flags.
+void fillReceivedPacket(msghdr& msg_hdr, int msg_flags) {
+  msg_hdr.msg_flags = msg_flags;
+  sockaddr_in peer_address{};
+  peer_address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+  peer_address.sin_family = AF_INET;
+  peer_address.sin_port = htons(12345);
+  memcpy(msg_hdr.msg_name, &peer_address, sizeof(peer_address));
+  msg_hdr.msg_namelen = sizeof(peer_address);
+}
+
+TEST(IoSocketHandleImpl, RecvmsgDropsPacketWithTruncatedControlMessages) {
+  NiceMock<Envoy::Api::MockOsSysCalls> os_sys_calls;
+  Envoy::TestThreadsafeSingletonInjector<Envoy::Api::OsSysCallsImpl> os_calls(&os_sys_calls);
+  EXPECT_CALL(os_sys_calls, recvmsg(_, _, _))
+      .WillOnce(Invoke([](int /*fd*/, msghdr* msg_hdr, int /*flags*/) {
+        fillReceivedPacket(*msg_hdr, MSG_CTRUNC);
+        return Api::SysCallSizeResult{100, 0};
+      }));
+
+  char buffer[128] = {};
+  Buffer::RawSlice slice{buffer, sizeof(buffer)};
+  uint32_t dropped_packets = 0;
+  IoHandle::RecvMsgOutput output(1, &dropped_packets);
+  IoSocketHandleImpl io_handle;
+  auto result = io_handle.recvmsg(&slice, 1, 1111, IoHandle::UdpSaveCmsgConfig(), output);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(0, result.return_value_);
+  EXPECT_TRUE(output.msg_[0].truncated_and_dropped_);
+  EXPECT_EQ(1, dropped_packets);
+}
+
+TEST(IoSocketHandleImpl, RecvmmsgDropsPacketWithTruncatedControlMessages) {
+  NiceMock<Envoy::Api::MockOsSysCalls> os_sys_calls;
+  Envoy::TestThreadsafeSingletonInjector<Envoy::Api::OsSysCallsImpl> os_calls(&os_sys_calls);
+  EXPECT_CALL(os_sys_calls, recvmmsg(_, _, _, _, _))
+      .WillOnce(Invoke(
+          [](int /*fd*/, mmsghdr* mmsg_hdr, unsigned int /*num*/, int /*flags*/, timespec* /*tp*/) {
+            // The first packet has truncated control messages, the second one is complete.
+            mmsg_hdr[0].msg_len = 100;
+            fillReceivedPacket(mmsg_hdr[0].msg_hdr, MSG_CTRUNC);
+            mmsg_hdr[1].msg_len = 50;
+            fillReceivedPacket(mmsg_hdr[1].msg_hdr, 0);
+            mmsg_hdr[1].msg_hdr.msg_controllen = 0;
+            return Api::SysCallIntResult{2, 0};
+          }));
+
+  char buffer1[128] = {};
+  char buffer2[128] = {};
+  RawSliceArrays slices = {{Buffer::RawSlice{buffer1, sizeof(buffer1)}},
+                           {Buffer::RawSlice{buffer2, sizeof(buffer2)}}};
+  uint32_t dropped_packets = 0;
+  IoHandle::RecvMsgOutput output(slices.size(), &dropped_packets);
+  IoSocketHandleImpl io_handle;
+  auto result = io_handle.recvmmsg(slices, 1111, IoHandle::UdpSaveCmsgConfig(), output);
+  EXPECT_EQ(2, result.return_value_);
+  EXPECT_TRUE(output.msg_[0].truncated_and_dropped_);
+  EXPECT_FALSE(output.msg_[1].truncated_and_dropped_);
+  EXPECT_EQ(50, output.msg_[1].msg_len_);
+  EXPECT_EQ(1, dropped_packets);
+}
+#endif
+
+#ifdef __linux__
+// Uses a real UDP socket that enables more control messages than the default control buffer holds,
+// and reserves space for the rest through the save_cmsg config.
+TEST(IoSocketHandleImpl, RecvmsgOffersControlBufferSpaceForSavedControlMessages) {
+  auto address = Network::Test::getCanonicalLoopbackAddress(Network::Address::IpVersion::v4);
+  Network::UdpListenSocket receiver(address, nullptr, /*bind=*/true);
+  Network::UdpListenSocket sender(address, nullptr, /*bind=*/true);
+  const int on = 1;
+  for (const auto& [level, option] :
+       std::vector<std::pair<int, int>>{{IPPROTO_IP, IP_PKTINFO},
+                                        {IPPROTO_IP, IP_RECVTOS},
+                                        {IPPROTO_IP, IP_RECVTTL},
+                                        {IPPROTO_IP, IP_RECVORIGDSTADDR},
+                                        {SOL_SOCKET, SO_TIMESTAMP}}) {
+    ASSERT_EQ(0, receiver.ioHandle().setOption(level, option, &on, sizeof(on)).return_value_);
+  }
+  // Block in recvmsg() until the packet arrives.
+  ASSERT_EQ(0, receiver.setBlockingForTest(true).return_value_);
+
+  std::string payload = "hello";
+  Buffer::RawSlice send_slice{payload.data(), payload.size()};
+  ASSERT_EQ(payload.size(), sender.ioHandle()
+                                .sendmsg(&send_slice, 1, 0, nullptr,
+                                         *receiver.connectionInfoProvider().localAddress())
+                                .return_value_);
+
+  IoHandle::UdpSaveCmsgConfig save_cmsg_config;
+  save_cmsg_config.level = IPPROTO_IP;
+  save_cmsg_config.type = IP_TTL;
+  save_cmsg_config.expected_size = 64;
+  char buffer[128] = {};
+  Buffer::RawSlice slice{buffer, sizeof(buffer)};
+  uint32_t dropped_packets = 0;
+  IoHandle::RecvMsgOutput output(1, &dropped_packets);
+  auto result = receiver.ioHandle().recvmsg(&slice, 1, 1111, save_cmsg_config, output);
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ(payload.size(), result.return_value_);
+  EXPECT_FALSE(output.msg_[0].truncated_and_dropped_);
+  EXPECT_GT(output.msg_[0].saved_cmsg_.length(), 0);
+}
+#endif
+
 TEST(IoSocketHandleImpl, SendEmptyPayloadCallsSend) {
   NiceMock<Api::MockOsSysCalls> os_sys_calls;
   TestThreadsafeSingletonInjector<Api::OsSysCallsImpl> os_calls(&os_sys_calls);

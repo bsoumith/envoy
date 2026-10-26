@@ -401,13 +401,13 @@ Api::IoCallUint64Result IoSocketHandleImpl::recvmsg(Buffer::RawSlice* slices,
   hdr.msg_iovlen = num_slices_for_read;
   hdr.msg_flags = 0;
   hdr.msg_control = cbuf.begin();
-  hdr.msg_controllen = cmsg_space_;
+  hdr.msg_controllen = cmsg_space;
   Api::SysCallSizeResult result =
       Api::OsSysCallsSingleton::get().recvmsg(fd_, &hdr, messageTruncatedOption());
   if (result.return_value_ < 0) {
     return sysCallResultToIoCallResult(result);
   }
-  if ((hdr.msg_flags & MSG_TRUNC) != 0) {
+  if ((hdr.msg_flags & (MSG_TRUNC | MSG_CTRUNC)) != 0) {
     ENVOY_LOG_MISC(debug, "Dropping truncated UDP packet with size: {}.", result.return_value_);
     result.return_value_ = 0;
     (*output.dropped_packets_)++;
@@ -415,8 +415,6 @@ Api::IoCallUint64Result IoSocketHandleImpl::recvmsg(Buffer::RawSlice* slices,
     return sysCallResultToIoCallResult(result);
   }
 
-  RELEASE_ASSERT((hdr.msg_flags & MSG_CTRUNC) == 0,
-                 fmt::format("Incorrectly set control message length: {}", hdr.msg_controllen));
   RELEASE_ASSERT(hdr.msg_namelen > 0,
                  fmt::format("Unable to get remote address from recvmsg() for fd: {}", fd_));
   output.msg_[0].peer_address_ = getOrCreateEnvoyAddressInstance(peer_addr, hdr.msg_namelen);
@@ -517,15 +515,13 @@ Api::IoCallUint64Result IoSocketHandleImpl::recvmmsg(RawSliceArrays& slices, uin
 
   for (int i = 0; i < num_packets_read; ++i) {
     msghdr& hdr = mmsg_hdr[i].msg_hdr;
-    if ((hdr.msg_flags & MSG_TRUNC) != 0) {
+    if ((hdr.msg_flags & (MSG_TRUNC | MSG_CTRUNC)) != 0) {
       ENVOY_LOG_MISC(debug, "Dropping truncated UDP packet with size: {}.", mmsg_hdr[i].msg_len);
       (*output.dropped_packets_)++;
       output.msg_[i].truncated_and_dropped_ = true;
       continue;
     }
 
-    RELEASE_ASSERT((hdr.msg_flags & MSG_CTRUNC) == 0,
-                   fmt::format("Incorrectly set control message length: {}", hdr.msg_controllen));
     RELEASE_ASSERT(hdr.msg_namelen > 0,
                    fmt::format("Unable to get remote address from recvmmsg() for fd: {}", fd_));
 
