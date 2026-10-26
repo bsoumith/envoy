@@ -1,6 +1,7 @@
 #include <jni.h>
 
 #include <iostream>
+#include <thread>
 
 #include "library/jni/jni_helper.h"
 
@@ -395,4 +396,20 @@ Java_io_envoyproxy_envoymobile_jni_JniHelperTest_newDirectByteBuffer(JNIEnv* env
   bytes[1] = 2;
   bytes[2] = 3;
   return jni_helper.newDirectByteBuffer(reinterpret_cast<void*>(bytes), sizeof(char) * 3).release();
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_io_envoyproxy_envoymobile_jni_JniHelperTest_detachCurrentThread(JNIEnv*, jclass) {
+  bool detached = false;
+  std::thread thread([&detached]() {
+    // Attaches the new thread to the JavaVM.
+    Envoy::JNI::JniHelper::getThreadLocalEnv();
+    Envoy::JNI::JniHelper::detachCurrentThread();
+    JNIEnv* env = nullptr;
+    detached = Envoy::JNI::JniHelper::getJavaVm()->GetEnv(reinterpret_cast<void**>(&env),
+                                                          Envoy::JNI::JniHelper::getVersion()) ==
+               JNI_EDETACHED;
+  });
+  thread.join();
+  return detached;
 }

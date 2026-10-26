@@ -118,6 +118,7 @@ public class JniHelperTest {
   public static native void callStaticVoidMethod(Class<?> clazz, String name, String signature);
   public static native Object callStaticObjectMethod(Class<?> clazz, String name, String signature);
   public static native Object newDirectByteBuffer();
+  public static native boolean detachCurrentThread();
 
   //================================================================================
   // Fields used for Get<Type>Field tests.
@@ -593,5 +594,10 @@ public class JniHelperTest {
     assertThat(byteBuffer.get(0)).isEqualTo(1);
     assertThat(byteBuffer.get(1)).isEqualTo(2);
     assertThat(byteBuffer.get(2)).isEqualTo(3);
+  }
+
+  @Test
+  public void testDetachCurrentThread() {
+    assertThat(detachCurrentThread()).isTrue();
   }
 }

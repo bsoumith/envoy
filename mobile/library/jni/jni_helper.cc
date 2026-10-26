@@ -141,7 +141,9 @@ void JniHelper::addToCache(absl::string_view class_name, const std::vector<Metho
 JavaVM* JniHelper::getJavaVm() { return java_vm_cache_.load(std::memory_order_acquire); }
 
 void JniHelper::detachCurrentThread() {
-  ASSERT(getJavaVm()->DetachCurrentThread() == JNI_OK, "Unable to detach current thread.");
+  // `ASSERT` arguments are not evaluated in release builds, so the call must be made outside of it.
+  const jint result = getJavaVm()->DetachCurrentThread();
+  ASSERT(result == JNI_OK, "Unable to detach current thread.");
 }
 
 JNIEnv* JniHelper::getThreadLocalEnv() {
