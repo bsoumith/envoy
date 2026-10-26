@@ -3033,7 +3033,9 @@ envoy_cc_test(
     ],
     deps = envoy_select_enable_http3([
         ":quic_http_integration_test_lib",
+        "//source/common/api:os_sys_calls_lib",
         "//test/test_common:logging_lib",
+        "//test/test_common:threadsafe_singleton_injector_lib",
         "@envoy_api//envoy/extensions/udp_packet_writer/v3:pkg_cc_proto",
     ]),
 )

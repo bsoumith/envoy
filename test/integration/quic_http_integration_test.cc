@@ -14,10 +14,12 @@
 #include "envoy/common/platform.h"
 #include "envoy/extensions/udp_packet_writer/v3/udp_default_writer_factory.pb.h"
 
+#include "source/common/api/os_sys_calls_impl.h"
 #include "source/common/quic/envoy_quic_client_connection.h"
 #include "source/common/quic/envoy_quic_packet_writer.h"
 
 #include "test/test_common/logging.h"
+#include "test/test_common/threadsafe_singleton_injector.h"
 
 #include "quiche/quic/core/quic_packet_writer_wrapper.h"
 #include "quiche/quic/test_tools/quic_connection_peer.h"
@@ -606,6 +608,81 @@ TEST_P(QuicHttpIntegrationPortMigrationTest, PortMigrationFailureOnPathDegrading
 
   EXPECT_TRUE(upstream_request_->complete());
   EXPECT_EQ(1024u * 2, upstream_request_->bodyLength());
+}
+
+// Fails socket(2) while armed, and otherwise uses the real system calls.
+class FailingSocketOsSysCalls : public Api::OsSysCallsImpl {
+public:
+  void setFailSocket(bool fail) {
+    absl::MutexLock lock(mutex_);
+    fail_socket_ = fail;
+  }
+
+  Api::SysCallSocketResult socket(int domain, int type, int protocol) override {
+    {
+      absl::MutexLock lock(mutex_);
+      if (fail_socket_) {
+        return {-1, EMFILE};
+      }
+    }
+    return Api::OsSysCallsImpl::socket(domain, type, protocol);
+  }
+
+private:
+  absl::Mutex mutex_;
+  bool fail_socket_ ABSL_GUARDED_BY(mutex_) = false;
+};
+
+// Test that port migration fails without crashing if the socket for the new path can't be created,
+// and that the connection keeps working on its current path.
+TEST_P(QuicHttpIntegrationPortMigrationTest, PortMigrationSocketCreationFailure) {
+  FailingSocketOsSysCalls os_sys_calls;
+  TestThreadsafeSingletonInjector<Api::OsSysCallsImpl> os_calls{&os_sys_calls};
+  setConcurrency(2);
+  initialize();
+  client_quic_options_.mutable_num_timeouts_to_trigger_port_migration()->set_value(2);
+  codec_client_ = makeHttpConnection(lookupPort("http"));
+  auto encoder_decoder =
+      codec_client_->startRequest(Http::TestRequestHeaderMapImpl{{":method", "POST"},
+                                                                 {":path", "/test/long/url"},
+                                                                 {":scheme", "http"},
+                                                                 {":authority", "host"}});
+  request_encoder_ = &encoder_decoder.first;
+  auto response = std::move(encoder_decoder.second);
+  codec_client_->sendData(*request_encoder_, 1024u, false);
+  ASSERT_TRUE(quic_connection_->waitForHandshakeDone());
+  // Wait for the upstream request so that Envoy doesn't create any socket while socket creation is
+  // failing.
+  ASSERT_TRUE(fake_upstreams_[0]->waitForHttpConnection(*dispatcher_, fake_upstream_connection_));
+  ASSERT_TRUE(fake_upstream_connection_->waitForNewStream(*dispatcher_, upstream_request_));
+
+  auto old_self_addr = quic_connection_->self_address();
+  Assert::resetEnvoyBugCountersForTest();
+  EXPECT_ENVOY_BUG(
+      {
+        os_sys_calls.setFailSocket(true);
+        quic_connection_->OnPathDegradingDetected();
+        EXPECT_FALSE(quic_connection_->HasPendingPathValidation());
+      },
+      "socket(2) failed");
+  os_sys_calls.setFailSocket(false);
+  EXPECT_EQ(old_self_addr, quic_connection_->self_address());
+
+  // The request completes on the original path.
+  codec_client_->sendData(*request_encoder_, 1024u, true);
+  ASSERT_TRUE(upstream_request_->waitForEndStream(*dispatcher_));
+  const Http::TestResponseHeaderMapImpl response_headers{{":status", "200"}};
+  size_t response_size{5u};
+  upstream_request_->encodeHeaders(response_headers, false);
+  upstream_request_->encodeData(response_size, true);
+  ASSERT_TRUE(response->waitForEndStream());
+  verifyResponse(std::move(response), "200", response_headers, std::string(response_size, 'a'));
+  EXPECT_EQ(1024u * 2, upstream_request_->bodyLength());
+
+  // Shut down the server before os_calls goes out of scope to avoid syscalls during its removal.
+  test_server_.reset();
+  cleanupUpstreamAndDownstream();
+  fake_upstreams_.clear();
 }
 
 TEST_P(QuicHttpIntegrationTest, AdminDrainDrainsListeners) {

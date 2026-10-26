@@ -990,5 +990,46 @@ TEST_P(EnvoyQuicClientSessionTest, ScopedIpv6PortMigrationCrash) {
   // SPELLCHECKER(on)
   EXPECT_NO_THROW(quic_connection_->OnPathDegradingDetected());
 }
+
+// Fails socket(2) once armed, and otherwise uses the real system calls.
+class SocketFailingOsSysCallsImpl : public Api::OsSysCallsImpl {
+public:
+  Api::SysCallSocketResult socket(int domain, int type, int protocol) override {
+    if (fail_socket_) {
+      return {-1, EMFILE};
+    }
+    return Api::OsSysCallsImpl::socket(domain, type, protocol);
+  }
+
+  bool fail_socket_{false};
+};
+
+// Tests that failing to create the socket for port migration doesn't crash, and that the
+// connection stays on its current path.
+TEST_P(EnvoyQuicClientSessionTest, PortMigrationSocketCreationFailure) {
+  quic::QuicNewConnectionIdFrame frame;
+  frame.connection_id = quic::test::TestConnectionId(1234);
+  ASSERT_NE(frame.connection_id, quic_connection_->connection_id());
+  frame.stateless_reset_token = quic::QuicUtils::GenerateStatelessResetToken(frame.connection_id);
+  frame.retire_prior_to = 0u;
+  frame.sequence_number = 1u;
+  quic_connection_->OnNewConnectionIdFrame(frame);
+  quic_connection_->SetSelfAddress(envoyIpAddressToQuicSocketAddress(self_addr_->ip()));
+
+  Assert::resetEnvoyBugCountersForTest();
+  SocketFailingOsSysCallsImpl os_sys_calls;
+  TestThreadsafeSingletonInjector<Api::OsSysCallsImpl> singleton_injector{&os_sys_calls};
+  os_sys_calls.fail_socket_ = true;
+  EXPECT_ENVOY_BUG(
+      {
+        // Trigger port migration, which creates a new socket to probe the new path.
+        quic_connection_->OnPathDegradingDetected();
+        EXPECT_FALSE(envoy_quic_session_->HasPendingPathValidation());
+        dispatcher_->run(Event::Dispatcher::RunType::NonBlock);
+        EXPECT_TRUE(quic_connection_->connected());
+        EXPECT_EQ(self_addr_->asString(), quic_connection_->self_address().ToString());
+      },
+      "socket(2) failed");
+}
 } // namespace Quic
 } // namespace Envoy

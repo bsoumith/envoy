@@ -19,7 +19,7 @@ public:
   virtual ~QuicClientPacketWriterFactory() = default;
 
   struct CreationResult {
-    // Not null.
+    // Null if the socket could not be opened.
     std::unique_ptr<EnvoyQuicPacketWriter> writer_;
     // Not null but can be a bad socket if creation goes wrong.
     Network::ConnectionSocketPtr socket_;

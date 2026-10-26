@@ -83,6 +83,12 @@ void EnvoyQuicClientConnection::EnvoyQuicClinetPathContextFactory::CreatePathVal
       writer_factory_.createSocketAndQuicPacketWriter(remote_address, network, new_local_address,
                                                       connection_.connectionSocket()->options());
   connection_.setUpConnectionSocket(*result.socket_, connection_.delegate_);
+  // The socket may have failed to be created, or have been closed while being set up. Writing
+  // to it during path validation is not possible.
+  if (!result.socket_->isOpen()) {
+    result_delegate->OnCreationFailed(network, "Failed to create socket for path validation.");
+    return;
+  }
   result_delegate->OnCreationSucceeded(std::make_unique<EnvoyQuicClientPathValidationContext>(
       envoyIpAddressToQuicSocketAddress(new_local_address->ip()), peer_address, network,
       std::move(result.writer_), std::move(result.socket_), connection_.dispatcher_));
@@ -268,6 +274,10 @@ void EnvoyQuicClientConnection::probeWithNewPort(const quic::QuicSocketAddress& 
                : quicAddressToEnvoyAddressInstance(peer_addr)),
           quic::kInvalidNetworkHandle, new_local_address, connectionSocket()->options());
   setUpConnectionSocket(*creation_result.socket_, delegate_);
+  if (!creation_result.socket_->isOpen()) {
+    ENVOY_CONN_LOG(debug, "Failed to create socket for probing with a new port.", *this);
+    return;
+  }
   auto writer = std::move(creation_result.writer_);
   quic::QuicSocketAddress self_address = envoyIpAddressToQuicSocketAddress(
       creation_result.socket_->connectionInfoProvider().localAddress()->ip());

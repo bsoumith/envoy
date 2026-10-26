@@ -45,6 +45,7 @@ createPersistentQuicInfoForCluster(Event::Dispatcher& dispatcher,
                                    const Upstream::ClusterInfo& cluster,
                                    Server::Configuration::ServerFactoryContext& server_context);
 
+// Returns nullptr if the connection's socket could not be created and set up.
 std::unique_ptr<Network::ClientConnection> createQuicNetworkConnection(
     Http::PersistentQuicInfo& info, std::shared_ptr<quic::QuicCryptoClientConfig> crypto_config,
     const quic::QuicServerId& server_id, Event::Dispatcher& dispatcher,
