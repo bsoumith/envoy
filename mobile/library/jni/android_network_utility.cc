@@ -84,7 +84,13 @@ static void jvmVerifyX509CertChain(const std::vector<std::string>& cert_chain,
                                    std::string auth_type, absl::string_view hostname,
                                    CertVerifyStatus* status, bool* is_issued_by_known_root,
                                    std::vector<std::string>* verified_chain) {
-  JniHelper jni_helper(JniHelper::getThreadLocalEnv());
+  JNIEnv* env = JniHelper::getThreadLocalEnv();
+  if (env == nullptr) {
+    // The thread could not be attached to the JavaVM.
+    *status = CertVerifyStatus::Failed;
+    return;
+  }
+  JniHelper jni_helper(env);
   LocalRefUniquePtr<jobject> result =
       callJvmVerifyX509CertChain(jni_helper, cert_chain, auth_type, hostname);
   if (jni_helper.exceptionCheck()) {

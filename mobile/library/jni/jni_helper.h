@@ -177,6 +177,7 @@ public:
    * See https://developer.android.com/training/articles/perf-jni#threads
    *
    * The `initialize(JavaVM*)` must be called first or else `JNIEnv` will return a `nullptr`.
+   * Returns a `nullptr` if the thread can't be attached to the JavaVM.
    */
   static JNIEnv* getThreadLocalEnv();
 

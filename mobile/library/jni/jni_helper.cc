@@ -157,6 +157,9 @@ JNIEnv* JniHelper::getThreadLocalEnv() {
 #endif
   }
   ASSERT(result == JNI_OK, "Unable to get JNIEnv.");
+  if (result != JNI_OK) {
+    return nullptr;
+  }
   return jni_env_cache_;
 }
 
